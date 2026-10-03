@@ -65,7 +65,10 @@ Redact request values and returned token fields before bounding error metadata."
             :code (browser-authentication-redacted-value
                    client (if (stringp error-value) error-value (json-get error-value "code")) secrets)
             :response (browser-authentication-redacted-value
-                       client (json-get document "error_description") secrets)))
+                     client (or (json-get document "error_description")
+                                (json-get error-value "message")
+                                (json-get error-value "description"))
+                     secrets)))
          document)))))
 
 (defun browser-authentication-exchange-code (client &key code verifier redirect-uri)

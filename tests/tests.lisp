@@ -80,27 +80,35 @@
                        (cl-rfc8252:browser-authentication-exchange-code
                         client :code "synthetic-code" :verifier "synthetic-verifier"
                         :redirect-uri "http://127.0.0.1:12/callback") "access_token"))))
-    (let* ((secret (make-string 300 :initial-element #\z))
-           (client (client
-                    :bounded-string-function
-                    (lambda (text &key limit)
-                      (setf bounded t)
-                      (check (not (search secret text)))
-                      (subseq text 0 (min limit (length text))))
-                    :request-function
-                    (lambda (&key url content)
-                      (declare (ignore url content))
-                      (values (cl-rfc8628:json-encode
-                               (cl-rfc8628:json-object "error" secret "error_description" secret
-                                                      "access_token" secret)) 400 nil))))
-           (condition (failure
-                       (lambda ()
-                         (cl-rfc8252:browser-authentication-exchange-code
-                          client :code secret :verifier "synthetic-verifier" :redirect-uri "redirect")))))
-      (check bounded)
-      (check (= 400 (cl-rfc8252:browser-authentication-error-status condition)))
-      (check (not (search (subseq secret 0 256) (or (cl-rfc8252:browser-authentication-error-code condition) ""))))
-      (check (not (search secret (princ-to-string condition))))))
+    (dolist (nested-p '(nil t))
+      (let* ((secret (make-string 300 :initial-element #\z))
+             (client (client
+                      :bounded-string-function
+                      (lambda (text &key limit)
+                        (setf bounded t)
+                        (check (not (search secret text)))
+                        (subseq text 0 (min limit (length text))))
+                      :request-function
+                      (lambda (&key url content)
+                        (declare (ignore url content))
+                        (values
+                         (cl-rfc8628:json-encode
+                          (if nested-p
+                              (cl-rfc8628:json-object
+                               "error" (cl-rfc8628:json-object "code" secret "message" secret)
+                               "access_token" secret)
+                              (cl-rfc8628:json-object "error" secret "error_description" secret
+                                                     "access_token" secret)))
+                         400 nil))))
+             (condition (failure
+                         (lambda ()
+                           (cl-rfc8252:browser-authentication-exchange-code
+                            client :code secret :verifier "synthetic-verifier" :redirect-uri "redirect")))))
+        (check bounded)
+        (check (= 400 (cl-rfc8252:browser-authentication-error-status condition)))
+        (check (not (search (subseq secret 0 256) (or (cl-rfc8252:browser-authentication-error-code condition) ""))))
+        (check (stringp (cl-rfc8252:browser-authentication-error-response condition)))
+        (check (not (search secret (princ-to-string condition)))))))
   (dolist (body '("[]" "false" "{" "{\"error\":\"invalid_grant\"}"))
     (check (eq ':token
                (cl-rfc8252:browser-authentication-error-stage
