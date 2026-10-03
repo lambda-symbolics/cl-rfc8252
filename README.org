@@ -1,0 +1,119 @@
+#+title: cl-rfc8252
+
+Installed-application browser OAuth for Common Lisp: RFC 7636 S256 PKCE,
+RFC 8252 IPv4 loopback redirects, authorization-code exchange, and credential
+publication through [[https://github.com/lambda-symbolics/cl-rfc8628][cl-rfc8628]].
+
+* Installation and checks
+
+With SBCL and Quicklisp installed, run:
+
+#+begin_src sh
+./script/bootstrap
+./script/check
+#+end_src
+
+The check uses synthetic credentials and real IPv4 loopback connections, with
+no provider requests. The ASDF system is =cl-rfc8252=; its test system is
+=cl-rfc8252/tests=. The package is =cl-rfc8252=, nickname =rfc8252=.
+
+* Client and login
+
+Create a =browser-authentication-client= with =:authorization-endpoint=,
+=:token-endpoint=, =:client-id=, =:scope=, and =:credential-function=.
+The credential function receives the manager and decoded token JSON object,
+validates the provider's required fields and claims, and returns a
+=cl-rfc8628:oauth-credentials= instance.
+
+Call =browser-authentication-login= with the client and a cl-rfc8628 credential
+manager. Keyword arguments are =:stream=, =:open-browser-p=,
+=:browser-function=, =:callback-function=, and =:timeout=. After validation,
+login accepts the account with =:allow-change t= and saves credentials through
+the manager's primary source. It returns those credentials. Listener and
+connection cleanup runs on success and failure; the listener closes before
+token exchange.
+
+#+begin_src lisp
+(cl-rfc8252:browser-authentication-login
+ (make-instance 'cl-rfc8252:browser-authentication-client
+                :authorization-endpoint authorization-endpoint
+                :token-endpoint token-endpoint
+                :client-id client-id
+                :scope "openid offline_access"
+                :callback-path "/oauth2callback"
+                :credential-function credential-validator)
+ credential-manager)
+#+end_src
+
+* Provider and host policy
+
+Client initargs:
+
+- =:ports=: an ordered list of registered ports, default ='(0)= for an
+  ephemeral port. Every listener binds =127.0.0.1=.
+- =:redirect-host=: ="127.0.0.1"= by default, or ="localhost"= for providers
+  whose registration requires it. =:callback-path= defaults to ="/callback"=.
+- =:authorization-parameters= and =:token-parameters=: extra string-pair
+  alists. Core OAuth parameters and repeated names are rejected.
+- =:verifier-octets=: 32 by default, configurable from 32 to 96, producing
+  43 to 128 unpadded Base64url characters. The challenge method is S256.
+- =:state-function=: a fresh unpredictable state generator. =:state-test=
+  receives the returned and expected strings, defaulting to exact equality.
+- =:timeout=: overall callback wait, default 900 seconds.
+  =:request-timeout=: reading one connection, default 5 seconds.
+  =:line-limit=: request-line octets including CRLF, default 8192.
+  Both waits use absolute monotonic deadlines. Binary request reads avoid
+  partial-character blocking; malformed, unrelated, duplicate-parameter,
+  and mismatched-state callbacks are ignored until the overall deadline.
+- =:request-function=: an optional effect accepting =:url= and =:content=,
+  where content is a form-encoded string. Return body, status, and headers as
+  multiple values. =:request-wrapper= receives a thunk around every request,
+  including injected effects, for host response-deadline policy.
+  =:headers= supplies additional headers to the default shared transport.
+- =:error-function=: a nonreturning function accepting =:stage=, =:message=,
+  =:status=, =:code=, and =:response=. The default signals
+  =browser-authentication-error=. =:error-type= identifies already-safe
+  request conditions to propagate intact, default =cl-rfc8628:credential-error=.
+- =:secret-function=: a thunk wrapper, defaulting to cl-rfc8628's secret-region
+  hook. =:bounded-string-function= accepts text and =:limit=. Request values
+  and returned token fields are redacted before bounding error metadata.
+- =:browser-function= and =:clock-function=: shared cl-rfc8628 browser and
+  monotonic-clock effects by default. Browser launch failure prints a manual
+  fallback and continues the callback wait.
+- =:display-function=: receives URL plus =:redirect-uri=, =:timeout=, and
+  =:stream=. =:browser-failure-function= receives the output stream.
+  =:label= and =:success-response=, =:failure-response=, =:mismatch-response=
+  provide product text. Response bodies are limited to 4096 UTF-8 octets.
+
+A supplied login =:callback-function= receives =(listener state &key timeout)=
+and returns a code. It owns state validation and bounded waiting. Keep
+credential-bearing data inside the host's secret region and supply only
+non-secret display and HTTP response text.
+
+* Lower-level operations
+
+- =browser-authentication-create-pkce=: verifier and S256 challenge.
+- =browser-authentication-state=: fresh 256-bit state.
+- =browser-authentication-authorization-url=: client plus =:redirect-uri=,
+  =:state=, and =:code-challenge=.
+- =browser-authentication-loopback-open=: client, returning listener and URI.
+  Close it with =browser-authentication-loopback-close=.
+- =browser-authentication-await-loopback=: client, listener, state, and
+  optional =:timeout=, returning the matching authorization code.
+- =browser-authentication-exchange-code=: client plus =:code=, =:verifier=,
+  and =:redirect-uri=, returning a decoded token JSON object.
+- =browser-authentication-token-document=: client plus =:endpoint=,
+  =:parameters=, and =:stage= for exchanges such as refresh.
+- =browser-authentication-request=: =:url=, =:content=, =:headers=, and
+  =:request-wrapper=, using cl-rfc8628's HTTP transport.
+- =browser-authentication-redacted-value=: client, text, and secret values.
+
+Socket portability uses usocket. New socket portability implementations belong
+in ls-compat rather than in this library.
+
+* License and references
+
+COLL-Attribution. See =LICENSE.lisp=.
+
+- [[https://www.rfc-editor.org/rfc/rfc7636][RFC 7636: Proof Key for Code Exchange]]
+- [[https://www.rfc-editor.org/rfc/rfc8252][RFC 8252: OAuth 2.0 for Native Apps]]

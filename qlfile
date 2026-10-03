@@ -1,0 +1,7 @@
+git cl-rfc8628 https://github.com/lambda-symbolics/cl-rfc8628.git :ref dea112d1bf2750a52c52f33344157af7b9f4f6f8
+ql babel 2026-01-01
+ql bordeaux-threads 2026-01-01
+ql cl-base64 2026-01-01
+ql ironclad 2026-01-01
+ql quri 2026-01-01
+ql usocket 2026-01-01
