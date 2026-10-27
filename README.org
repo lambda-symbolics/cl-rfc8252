@@ -11,11 +11,18 @@ With SBCL and Quicklisp installed, run:
 #+begin_src sh
 ./script/bootstrap
 ./script/check
+./script/check --fix
 #+end_src
 
-The check uses synthetic credentials and real IPv4 loopback connections, with
+The tests use synthetic credentials and real IPv4 loopback connections, with
 no provider requests. The ASDF system is =cl-rfc8252=; its test system is
 =cl-rfc8252/tests=. The package is =cl-rfc8252=, nickname =rfc8252=.
+
+=./script/check= runs the tests, then checks the source with
+[[https://github.com/lambda-symbolics/cheque][cheque]] as =cheque.sexp=
+configures it. =--fix= skips the tests and repairs what cheque can repair.
+cheque and its tools are development dependencies: =checks/qlfile= lists them,
+and the check installs them on first use into =~/.cache/cheque/tools/=.
 
 * Client and login
 
