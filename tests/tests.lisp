@@ -1,4 +1,5 @@
 (defpackage #:cl-rfc8252/tests
+  (:documentation "Tests for cl-rfc8252.")
   (:use #:cl)
   (:export #:run-tests))
 

@@ -1,4 +1,5 @@
 (defpackage #:cl-rfc8252
+  (:documentation "Installed-app browser OAuth with S256 PKCE, loopback redirects, and code exchange.")
   (:nicknames #:rfc8252)
   (:use #:cl)
   (:import-from #:cl-rfc8628
