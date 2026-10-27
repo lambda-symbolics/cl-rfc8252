@@ -25,6 +25,7 @@ Try CLIENT's registered ports in order; zero requests an ephemeral port."
 (defun browser-authentication-loopback-close (listener)
   "Close LISTENER or an accepted socket, tolerating an already closed socket."
   (when listener
+    ; mallet:suppress no-ignore-errors -- best-effort close of a socket that may already be closed
     (ignore-errors (usocket:socket-close listener)))
   (values))
 
