@@ -53,7 +53,7 @@ Redact request values and returned token fields before bounding error metadata."
                  (error condition)
                  (browser-authentication--fail client stage "The OAuth token request failed."))))
        (let* ((document (handler-case (json-decode body) (error () nil)))
-              (secrets (append (mapcar #'cdr parameters)
+              (secrets (append (mapcar #'rest parameters)
                                (loop for key in '("access_token" "refresh_token" "id_token" "client_secret" "code" "code_verifier")
                                      collect (json-get document key))))
               (error-value (json-get document "error")))

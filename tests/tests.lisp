@@ -54,7 +54,7 @@
     (dolist (pair '(("response_type" . "code") ("state" . "expected")
                     ("code_challenge_method" . "S256") ("prompt" . "consent")
                     ("redirect_uri" . "http://127.0.0.1:43210/callback")))
-      (check (equal (cdr pair) (cdr (assoc (car pair) parameters :test #'string=)))))))
+      (check (equal (rest pair) (rest (assoc (first pair) parameters :test #'string=)))))))
 
 (defun test-exchange-and-errors ()
   "Verify form parameters and safe metadata from successful and failed tokens."
@@ -73,7 +73,7 @@
                                ("client_secret" . "synthetic-client-secret")
                                ("grant_type" . "authorization_code") ("client_id" . "test-app")
                                ("redirect_uri" . "http://127.0.0.1:12/callback")))
-                 (check (equal (cdr pair) (cdr (assoc (car pair) (quri:url-decode-params content) :test #'string=)))))
+                 (check (equal (rest pair) (rest (assoc (first pair) (quri:url-decode-params content) :test #'string=)))))
                (values "{\"access_token\":\"synthetic-access\"}" 200 nil)))))
       (check (string= "synthetic-access"
                       (cl-rfc8628:json-get

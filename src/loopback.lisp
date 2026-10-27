@@ -129,9 +129,9 @@ request reading separately, always close it, and validate state before errors."
                                            (client-request-timeout client))))
                         (line (browser-authentication--read-line client connection request-deadline))
                         (parameters (browser-authentication--request-parameters client line))
-                        (received-state (cdr (assoc "state" parameters :test #'string=)))
-                        (code (cdr (assoc "code" parameters :test #'string=)))
-                        (oauth-error (cdr (assoc "error" parameters :test #'string=))))
+                        (received-state (rest (assoc "state" parameters :test #'string=)))
+                        (code (rest (assoc "code" parameters :test #'string=)))
+                        (oauth-error (rest (assoc "error" parameters :test #'string=))))
                    (cond
                      ((not parameters)
                       (browser-authentication--respond connection "404 Not Found" "Not an OAuth callback."))
@@ -151,7 +151,7 @@ request reading separately, always close it, and validate state before errors."
                          client ':callback "The OAuth authorization request was rejected."
                          :code (browser-authentication-redacted-value client oauth-error secrets)
                          :response (browser-authentication-redacted-value
-                                    client (cdr (assoc "error_description" parameters :test #'string=)) secrets))))
+                                    client (rest (assoc "error_description" parameters :test #'string=)) secrets))))
                      ((non-empty-string-p code)
                       (browser-authentication--respond connection "200 OK" (client-success-response client))
                       (return-from browser-authentication-await-loopback code))
