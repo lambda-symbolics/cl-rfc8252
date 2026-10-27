@@ -120,7 +120,8 @@
                                                         (declare (ignore url content))
                                                         (values body 200 nil)))))))))))
 
-(define-condition test-host-error (error) ())
+(define-condition test-host-error (error) ()
+  (:documentation "A host error that the token request must propagate unchanged."))
 
 (defun test-request-policy ()
   "Apply host deadlines to injected transports and propagate safe host errors."
@@ -232,14 +233,20 @@
       (cl-rfc8252:browser-authentication-loopback-close occupied))))
 
 (defclass test-source (cl-rfc8628:credential-source)
-  ((saved :initform nil :accessor saved)))
+  ((saved :initform      nil
+          :accessor      saved
+          :documentation "The credentials from the last save, or NIL."))
+  (:documentation "A credential source that keeps saved credentials in memory."))
 
 (defmethod cl-rfc8628:credential-source-save ((source test-source) credentials)
+  "Keep CREDENTIALS in SOURCE."
   (setf (saved source) credentials))
 
-(defclass test-manager (cl-rfc8628:managed-credential-manager) ())
+(defclass test-manager (cl-rfc8628:managed-credential-manager) ()
+  (:documentation "A credential manager with a fixed provider label."))
 
 (defmethod cl-rfc8628:credential-manager-provider-label ((manager test-manager))
+  "Return the test provider label."
   (declare (ignore manager))
   "Test OAuth")
 
