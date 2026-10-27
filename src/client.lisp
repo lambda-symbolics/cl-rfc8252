@@ -28,7 +28,7 @@
    (scope :initarg :scope :initform "" :reader client-scope
           :documentation "The space-separated requested scopes.")
    (authorization-parameters :initarg :authorization-parameters :initform nil
-                             :reader client-authorization-parameters
+                             :reader        client-authorization-parameters
                              :documentation "Provider-specific authorization query parameters.")
    (token-parameters :initarg :token-parameters :initform nil :reader client-token-parameters
                      :documentation "Provider-specific token form parameters, such as a client secret.")
@@ -59,25 +59,25 @@
    (credential-function :initarg :credential-function :reader client-credential-function
                         :documentation "The provider's (manager token-document) credential validator.")
    (error-function :initarg :error-function :initform #'browser-authentication-fail
-                   :reader client-error-function
+                   :reader        client-error-function
                    :documentation "The host's nonreturning failure callback with stage/message/status/code/response keys.")
    (error-type :initarg :error-type :initform 'credential-error :reader client-error-type
                :documentation "Already-safe host condition type propagated intact from request effects.")
    (secret-function :initarg :secret-function :initform cl-rfc8628:*secret-region-function*
                     :reader client-secret-function :documentation "The host's secret-use thunk wrapper.")
    (bounded-string-function :initarg :bounded-string-function :initform #'browser-authentication--bounded-string
-                            :reader client-bounded-string-function
+                            :reader        client-bounded-string-function
                             :documentation "The host's text bounder accepting :limit after secret redaction.")
    (browser-function :initarg :browser-function :initform #'device-authentication-open-browser
                      :reader client-browser-function :documentation "The shared best-effort browser opener.")
    (clock-function :initarg :clock-function :initform #'device-authentication-monotonic-seconds
                    :reader client-clock-function :documentation "A monotonic clock returning seconds.")
    (display-function :initarg :display-function :initform #'browser-authentication--display
-                     :reader client-display-function
+                     :reader        client-display-function
                      :documentation "The caller's (URL &key redirect-uri timeout stream) login prompt.")
-   (browser-failure-function :initarg :browser-failure-function
-                             :initform #'browser-authentication--browser-failure
-                             :reader client-browser-failure-function
+   (browser-failure-function :initarg       :browser-failure-function
+                             :initform      #'browser-authentication--browser-failure
+                             :reader        client-browser-failure-function
                              :documentation "The caller's manual-browser fallback message function of a stream.")
    (label :initarg :label :initform "OAuth" :reader client-label
           :documentation "A caller-owned product label for safe failure messages.")
@@ -92,7 +92,7 @@
 (defun browser-authentication--fail (client stage message &key status code response)
   "Signal CLIENT's host condition without retaining transport or callback secrets."
   (funcall (client-error-function client) :stage stage
-           :message (format nil "~A: ~A" (client-label client) message)
+           :message                              (format nil "~A: ~A" (client-label client) message)
            :status status :code code :response response)
   (browser-authentication-fail :stage stage :message "The OAuth failure callback returned."))
 
@@ -159,10 +159,10 @@
 (defun browser-authentication-create-pkce (&key (verifier-octets 32))
   "Return a fresh RFC 7636 verifier and its S256 challenge."
   (unless (typep verifier-octets '(integer 32 96))
-    (browser-authentication-fail :stage ':configuration
+    (browser-authentication-fail :stage   ':configuration
                                  :message "PKCE requires 32-96 random verifier octets."))
   (let* ((verifier (browser-authentication--base64url (ironclad:random-data verifier-octets)))
-         (octets (map '(simple-array (unsigned-byte 8) (*)) #'char-code verifier)))
+         (octets   (map '(simple-array (unsigned-byte 8) (*)) #'char-code verifier)))
     (values verifier (browser-authentication--base64url
                       (ironclad:digest-sequence ':sha256 octets)))))
 

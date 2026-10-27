@@ -1,6 +1,7 @@
 (defpackage #:cl-rfc8252/tests
   (:use #:cl)
   (:export #:run-tests))
+
 (in-package #:cl-rfc8252/tests)
 
 (defvar *checks* 0 "Number of assertions in this run.")
@@ -45,11 +46,11 @@
     (check (eq ':configuration
                (cl-rfc8252:browser-authentication-error-stage
                 (failure (lambda () (apply #'client arguments)))))))
-  (let* ((client (client :scope "openid offline_access"
-                         :authorization-parameters '(("prompt" . "consent"))))
-         (url (cl-rfc8252:browser-authentication-authorization-url
-               client :redirect-uri "http://127.0.0.1:43210/callback"
-               :state "expected" :code-challenge "challenge"))
+  (let* ((client     (client :scope                    "openid offline_access"
+                             :authorization-parameters '(("prompt" . "consent"))))
+         (url        (cl-rfc8252:browser-authentication-authorization-url
+                      client :redirect-uri "http://127.0.0.1:43210/callback"
+                      :state "expected" :code-challenge "challenge"))
          (parameters (quri:url-decode-params (quri:uri-query (quri:uri url)))))
     (dolist (pair '(("response_type" . "code") ("state" . "expected")
                     ("code_challenge_method" . "S256") ("prompt" . "consent")
@@ -62,9 +63,9 @@
     (let ((client
             (client
              :token-parameters '(("client_secret" . "synthetic-client-secret"))
-             :secret-function (lambda (thunk)
-                                (setf scoped t)
-                                (unwind-protect (funcall thunk) (setf scoped nil)))
+             :secret-function  (lambda (thunk)
+                                 (setf scoped t)
+                                 (unwind-protect (funcall thunk) (setf scoped nil)))
              :request-function
              (lambda (&key url content)
                (check scoped)
@@ -81,25 +82,25 @@
                         client :code "synthetic-code" :verifier "synthetic-verifier"
                         :redirect-uri "http://127.0.0.1:12/callback") "access_token"))))
     (dolist (nested-p '(nil t))
-      (let* ((secret (make-string 300 :initial-element #\z))
-             (client (client
-                      :bounded-string-function
-                      (lambda (text &key limit)
-                        (setf bounded t)
-                        (check (not (search secret text)))
-                        (subseq text 0 (min limit (length text))))
-                      :request-function
-                      (lambda (&key url content)
-                        (declare (ignore url content))
-                        (values
-                         (cl-rfc8628:json-encode
-                          (if nested-p
-                              (cl-rfc8628:json-object
-                               "error" (cl-rfc8628:json-object "code" secret "message" secret)
-                               "access_token" secret)
-                              (cl-rfc8628:json-object "error" secret "error_description" secret
-                                                     "access_token" secret)))
-                         400 nil))))
+      (let* ((secret    (make-string 300 :initial-element #\z))
+             (client    (client
+                         :bounded-string-function
+                         (lambda (text &key limit)
+                           (setf bounded t)
+                           (check (not (search secret text)))
+                           (subseq text 0 (min limit (length text))))
+                         :request-function
+                         (lambda (&key url content)
+                           (declare (ignore url content))
+                           (values
+                            (cl-rfc8628:json-encode
+                             (if nested-p
+                                 (cl-rfc8628:json-object
+                                  "error" (cl-rfc8628:json-object "code" secret "message" secret)
+                                  "access_token" secret)
+                                 (cl-rfc8628:json-object "error" secret "error_description" secret
+                                                        "access_token" secret)))
+                            400 nil))))
              (condition (failure
                          (lambda ()
                            (cl-rfc8252:browser-authentication-exchange-code
@@ -125,8 +126,8 @@
   (let ((wrapped nil) (host-error (make-condition 'test-host-error)))
     (handler-case
         (cl-rfc8252:browser-authentication-token-document
-         (client :error-type 'test-host-error
-                 :request-wrapper (lambda (thunk) (setf wrapped t) (funcall thunk))
+         (client :error-type       'test-host-error
+                 :request-wrapper  (lambda (thunk) (setf wrapped t) (funcall thunk))
                  :request-function (lambda (&key url content)
                                      (declare (ignore url content))
                                      (check wrapped)
@@ -153,14 +154,14 @@
   "Run requests on a thread and return callback result, responses, and elapsed time."
   (multiple-value-bind (listener redirect-uri) (cl-rfc8252:browser-authentication-loopback-open client)
     (declare (ignore redirect-uri))
-    (let* ((port (usocket:get-local-port listener))
+    (let* ((port    (usocket:get-local-port listener))
            (responses nil) (thread-error nil)
-           (thread (bordeaux-threads:make-thread
-                    (lambda ()
-                      (handler-case
-                          (dolist (request requests)
-                            (push (apply #'send-request port request) responses))
-                        (error (condition) (setf thread-error condition))))))
+           (thread  (bordeaux-threads:make-thread
+                     (lambda ()
+                       (handler-case
+                           (dolist (request requests)
+                             (push (apply #'send-request port request) responses))
+                         (error (condition) (setf thread-error condition))))))
            (started (get-internal-real-time)))
       (unwind-protect
            (let ((result (handler-case
@@ -206,15 +207,15 @@
     (check (not (search "expected" (cl-rfc8252:browser-authentication-error-response result)))))
   (multiple-value-bind (code responses elapsed)
       (run-loopback (client :success-response "Přihlášení dokončeno."
-                            :state-test (lambda (received expected)
-                                          (or (string= received expected)
-                                              (string= received (concatenate 'string expected ".variant")))))
+                            :state-test       (lambda (received expected)
+                                                (or (string= received expected)
+                                                    (string= received (concatenate 'string expected ".variant")))))
                     '(("GET /callback?state=expected.variant&code=variant HTTP/1.1")))
     (declare (ignore elapsed))
     (check (string= code "variant"))
-    (let* ((bytes (first responses))
-           (text (babel:octets-to-string bytes :encoding ':utf-8))
-           (separator (search (format nil "~C~C~C~C" #\Return #\Newline #\Return #\Newline) text))
+    (let* ((bytes        (first responses))
+           (text         (babel:octets-to-string bytes :encoding ':utf-8))
+           (separator    (search (format nil "~C~C~C~C" #\Return #\Newline #\Return #\Newline) text))
            (length-start (+ (search "Content-Length: " text) (length "Content-Length: "))))
       (check (= (parse-integer text :start length-start :junk-allowed t)
                 (length (babel:string-to-octets (subseq text (+ separator 4)) :encoding ':utf-8))))))
@@ -231,9 +232,12 @@
 
 (defclass test-source (cl-rfc8628:credential-source)
   ((saved :initform nil :accessor saved)))
+
 (defmethod cl-rfc8628:credential-source-save ((source test-source) credentials)
   (setf (saved source) credentials))
+
 (defclass test-manager (cl-rfc8628:managed-credential-manager) ())
+
 (defmethod cl-rfc8628:credential-manager-provider-label ((manager test-manager))
   (declare (ignore manager))
   "Test OAuth")
@@ -241,39 +245,39 @@
 (defun test-login-publication ()
   "Verify credential publication, secret scope, and listener cleanup on failures."
   (dolist (fail-stage '(nil :callback :transport :credentials :browser))
-    (let* ((source (make-instance 'test-source))
-           (manager (make-instance 'test-manager :primary-source source))
+    (let* ((source      (make-instance 'test-source))
+           (manager     (make-instance 'test-manager :primary-source source))
            (port nil) (region-depth 0)
            (credentials (make-instance 'cl-rfc8628:oauth-credentials :access-token "synthetic-access"
                                         :refresh-token "synthetic-refresh" :account-id "synthetic-account"))
-           (client (client
-                    :secret-function (lambda (thunk)
-                                       (incf region-depth)
-                                       (unwind-protect (funcall thunk) (decf region-depth)))
-                    :request-function (lambda (&key url content)
-                                        (declare (ignore url content))
-                                        (check (plusp region-depth))
-                                        (when (eq fail-stage ':transport) (error "Synthetic transport failure."))
-                                        (values "{\"access_token\":\"synthetic-access\"}" 200 nil))
-                    :credential-function (lambda (manager document)
-                                           (declare (ignore manager document))
-                                           (check (plusp region-depth))
-                                           (when (eq fail-stage ':credentials) (error "Synthetic validation failure."))
-                                           credentials)
-                    :display-function (lambda (url &key redirect-uri timeout stream)
-                                        (declare (ignore url timeout stream))
-                                        (setf port (quri:uri-port (quri:uri redirect-uri)))))))
+           (client      (client
+                         :secret-function     (lambda (thunk)
+                                                (incf region-depth)
+                                                (unwind-protect (funcall thunk) (decf region-depth)))
+                         :request-function    (lambda (&key url content)
+                                                (declare (ignore url content))
+                                                (check (plusp region-depth))
+                                                (when (eq fail-stage ':transport) (error "Synthetic transport failure."))
+                                                (values "{\"access_token\":\"synthetic-access\"}" 200 nil))
+                         :credential-function (lambda (manager document)
+                                                (declare (ignore manager document))
+                                                (check (plusp region-depth))
+                                                (when (eq fail-stage ':credentials) (error "Synthetic validation failure."))
+                                                credentials)
+                         :display-function    (lambda (url &key redirect-uri timeout stream)
+                                                (declare (ignore url timeout stream))
+                                                (setf port (quri:uri-port (quri:uri redirect-uri)))))))
       (handler-case
           (let ((result (cl-rfc8252:browser-authentication-login
                          client manager :stream (make-broadcast-stream)
-                         :browser-function (lambda (url)
-                                             (declare (ignore url))
-                                             (when (eq fail-stage ':browser) (error "Synthetic browser failure.")) t)
-                         :callback-function (lambda (listener state &key timeout)
-                                              (declare (ignore listener state timeout))
-                                              (check (plusp region-depth))
-                                              (when (eq fail-stage ':callback) (error "Synthetic callback failure."))
-                                              "synthetic-code"))))
+                         :browser-function      (lambda (url)
+                                                  (declare (ignore url))
+                                                  (when (eq fail-stage ':browser) (error "Synthetic browser failure.")) t)
+                         :callback-function     (lambda (listener state &key timeout)
+                                                  (declare (ignore listener state timeout))
+                                                  (check (plusp region-depth))
+                                                  (when (eq fail-stage ':callback) (error "Synthetic callback failure."))
+                                                  "synthetic-code"))))
             (check (eq result credentials)))
         (error (condition)
           (unless fail-stage (error condition))))

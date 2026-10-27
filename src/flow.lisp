@@ -45,42 +45,43 @@ Redact request values and returned token fields before bounding error metadata."
                 (if (client-request-function client)
                     (funcall (client-request-function client)
                              :url endpoint :content (quri:url-encode-params parameters))
-                    (browser-authentication-request :url endpoint
+                    (browser-authentication-request :url     endpoint
                                                     :content (quri:url-encode-params parameters)
                                                     :headers (client-headers client)))))
            (error (condition)
              (if (typep condition (client-error-type client))
                  (error condition)
                  (browser-authentication--fail client stage "The OAuth token request failed."))))
-       (let* ((document (handler-case (json-decode body) (error () nil)))
-              (secrets (append (mapcar #'rest parameters)
-                               (loop for key in '("access_token" "refresh_token" "id_token" "client_secret" "code" "code_verifier")
-                                     collect (json-get document key))))
+       (let* ((document    (handler-case (json-decode body) (error () nil)))
+              (secrets     (append (mapcar #'rest parameters)
+                                   (loop for key in '("access_token" "refresh_token" "id_token" "client_secret" "code" "code_verifier")
+                                         collect (json-get document key))))
               (error-value (json-get document "error")))
          (unless (and (integerp status) (<= 200 status 299)
                       (json-object-p document) (null error-value))
            (browser-authentication--fail
             client stage "The OAuth token endpoint rejected the request."
-            :status (and (integerp status) status)
-            :code (browser-authentication-redacted-value
-                   client (if (stringp error-value) error-value (json-get error-value "code")) secrets)
+            :status   (and (integerp status) status)
+            :code     (browser-authentication-redacted-value
+                       client (if (stringp error-value) error-value (json-get error-value "code")) secrets)
             :response (browser-authentication-redacted-value
-                     client (or (json-get document "error_description")
-                                (json-get error-value "message")
-                                (json-get error-value "description"))
-                     secrets)))
+                       client (or (json-get document "error_description")
+                                  (json-get error-value "message")
+                                  (json-get error-value "description"))
+                       secrets)))
          document)))))
 
 (defun browser-authentication-exchange-code (client &key code verifier redirect-uri)
   "Exchange CODE using its original S256 VERIFIER and bound redirect URI."
   (browser-authentication-token-document
    client :stage ':token
-   :parameters (append (list (cons "grant_type" "authorization_code")
-                             (cons "client_id" (client-id client))
-                             (cons "code" code)
-                             (cons "code_verifier" verifier)
-                             (cons "redirect_uri" redirect-uri))
-                       (client-token-parameters client))))
+   :parameters   (append (list (cons "grant_type" "authorization_code")
+                               (cons "client_id" (client-id client))
+                               (cons "code" code)
+                               (cons "code_verifier" verifier)
+                               (cons "redirect_uri" redirect-uri))
+                         (client-token-parameters client))))
+
 
 ;;;; -- Credential Publication --
 
@@ -111,15 +112,15 @@ state validation. Always close the listener and scope the flow as secret use."
                              (not (handler-case (funcall browser-function url) (error () nil))))
                     (funcall (client-browser-failure-function client) stream))
                   (finish-output stream)
-                  (let* ((code (if callback-function
-                                   (funcall callback-function listener state :timeout timeout)
-                                   (browser-authentication-await-loopback
-                                    client listener state :timeout timeout)))
-                         (document (progn
-                                     (browser-authentication-loopback-close listener)
-                                     (setf listener nil)
-                                     (browser-authentication-exchange-code
-                                      client :code code :verifier verifier :redirect-uri redirect-uri)))
+                  (let* ((code        (if callback-function
+                                          (funcall callback-function listener state :timeout timeout)
+                                          (browser-authentication-await-loopback
+                                           client listener state :timeout timeout)))
+                         (document    (progn
+                                        (browser-authentication-loopback-close listener)
+                                        (setf listener nil)
+                                        (browser-authentication-exchange-code
+                                         client :code code :verifier verifier :redirect-uri redirect-uri)))
                          (credentials (funcall (client-credential-function client) manager document)))
                     (unless (typep credentials 'oauth-credentials)
                       (browser-authentication--fail client ':credentials

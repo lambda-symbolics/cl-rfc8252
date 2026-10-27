@@ -10,7 +10,7 @@ Try CLIENT's registered ports in order; zero requests an ephemeral port."
             (handler-case
                 (usocket:socket-listen "127.0.0.1" port
                                        :reuse-address t
-                                       :element-type '(unsigned-byte 8))
+                                       :element-type  '(unsigned-byte 8))
               (usocket:socket-error () nil))))
       (when listener
         (return-from browser-authentication-loopback-open
@@ -38,7 +38,7 @@ Return NIL on timeout, EOF, excessive length, or malformed line framing."
   (let ((stream (usocket:socket-stream connection))
         (octets (make-array (client-line-limit client)
                             :element-type '(unsigned-byte 8)))
-        (index 0))
+        (index  0))
     (handler-case
         (loop while (< index (length octets))
               for remaining = (browser-authentication--remaining client deadline)
@@ -73,8 +73,8 @@ Return NIL on timeout, EOF, excessive length, or malformed line framing."
                        (return-from browser-authentication--query nil))
                      (incf index 2))
           (let* ((separator (position #\= part))
-                 (key (quri:url-decode (subseq part 0 separator)))
-                 (value (if separator (quri:url-decode (subseq part (1+ separator))) "")))
+                 (key       (quri:url-decode (subseq part 0 separator)))
+                 (value     (if separator (quri:url-decode (subseq part (1+ separator))) "")))
             (when (assoc key parameters :test #'string=)
               (return-from browser-authentication--query nil))
             (push (cons key value) parameters)))
@@ -88,7 +88,7 @@ Return NIL on timeout, EOF, excessive length, or malformed line framing."
       (when (and (= (length fields) 3)
                  (string= (first fields) "GET")
                  (member (third fields) '("HTTP/1.0" "HTTP/1.1") :test #'string=))
-        (let* ((target (second fields))
+        (let* ((target    (second fields))
                (separator (position #\? target)))
           (when (and separator
                      (not (position #\# target))
@@ -98,10 +98,10 @@ Return NIL on timeout, EOF, excessive length, or malformed line framing."
 (defun browser-authentication--respond (connection status body)
   "Send a small non-secret UTF-8 text response with an octet Content-Length."
   (let* ((body-octets (babel:string-to-octets body :encoding ':utf-8))
-         (header (format nil "HTTP/1.1 ~A~C~CContent-Type: text/plain; charset=utf-8~C~CContent-Length: ~D~C~CConnection: close~C~C~C~C"
-                         status #\Return #\Newline #\Return #\Newline
-                         (length body-octets) #\Return #\Newline
-                         #\Return #\Newline #\Return #\Newline)))
+         (header      (format nil "HTTP/1.1 ~A~C~CContent-Type: text/plain; charset=utf-8~C~CContent-Length: ~D~C~CConnection: close~C~C~C~C"
+                              status #\Return #\Newline #\Return #\Newline
+                              (length body-octets) #\Return #\Newline
+                              #\Return #\Newline #\Return #\Newline)))
     (handler-case
         (let ((stream (usocket:socket-stream connection)))
           (write-sequence (babel:string-to-octets header :encoding ':ascii) stream)
@@ -127,11 +127,11 @@ request reading separately, always close it, and validate state before errors."
                  (let* ((request-deadline
                           (min deadline (+ (funcall (client-clock-function client))
                                            (client-request-timeout client))))
-                        (line (browser-authentication--read-line client connection request-deadline))
-                        (parameters (browser-authentication--request-parameters client line))
+                        (line           (browser-authentication--read-line client connection request-deadline))
+                        (parameters     (browser-authentication--request-parameters client line))
                         (received-state (rest (assoc "state" parameters :test #'string=)))
-                        (code (rest (assoc "code" parameters :test #'string=)))
-                        (oauth-error (rest (assoc "error" parameters :test #'string=))))
+                        (code           (rest (assoc "code" parameters :test #'string=)))
+                        (oauth-error    (rest (assoc "error" parameters :test #'string=))))
                    (cond
                      ((not parameters)
                       (browser-authentication--respond connection "404 Not Found" "Not an OAuth callback."))
@@ -149,7 +149,7 @@ request reading separately, always close it, and validate state before errors."
                                                      collect value))))
                         (browser-authentication--fail
                          client ':callback "The OAuth authorization request was rejected."
-                         :code (browser-authentication-redacted-value client oauth-error secrets)
+                         :code     (browser-authentication-redacted-value client oauth-error secrets)
                          :response (browser-authentication-redacted-value
                                     client (rest (assoc "error_description" parameters :test #'string=)) secrets))))
                      ((non-empty-string-p code)
